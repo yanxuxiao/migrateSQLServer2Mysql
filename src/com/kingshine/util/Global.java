@@ -113,7 +113,11 @@ public class Global {
 	 */
 	public static String[] commonGetProperties(String fileName){
 		try {
-			List<String> result = FileUtil.readList(new File(fileName)) ;
+			File file = new File(fileName) ;
+			if(!file.exists()){
+				return null ;
+			}
+			List<String> result = FileUtil.readList(file) ;
 			String[] items = null ;
 			if(result.size()>0){
 				items = result.get(0).split(",") ;

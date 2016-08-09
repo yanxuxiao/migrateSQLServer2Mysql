@@ -8,6 +8,8 @@ import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.File;
@@ -142,6 +144,7 @@ public class MainLayout extends BaseBorderLayout{
 		p.add(jl,s) ;
 		s.gridwidth=0;
 		sqlserver_tables = new BaseJComboBox<String>() ;
+		sqlserver_tables.addItem("请选择");
 		p.add(sqlserver_tables,s) ;
 		
 		s.gridwidth=1;
@@ -232,8 +235,81 @@ public class MainLayout extends BaseBorderLayout{
 
 		//加载保存的配置
 		load_sqlserver_settings();
+		load_msyql_settings();
 		
 		// 事件 ***************************************************
+		
+		cb1.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				migrate() ;
+			}
+		});
+		
+		//mysql配置面板相关事件
+		test_mysql.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				test_mysql();
+			}
+		});
+		mysql_databases.addMouseListener(new MouseListener() {
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				
+			}
+			@Override
+			public void mousePressed(MouseEvent e) {
+				
+			}
+			@Override
+			public void mouseExited(MouseEvent e) {
+				
+			}
+			@Override
+			public void mouseEntered(MouseEvent e) {
+				
+			}
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				load_mysql_databases() ;
+			}
+		});
+		mysql_databases.getComponent(0).addMouseListener(new MouseListener() {
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				
+			}
+			@Override
+			public void mousePressed(MouseEvent e) {
+				
+			}
+			@Override
+			public void mouseExited(MouseEvent e) {
+				
+			}
+			@Override
+			public void mouseEntered(MouseEvent e) {
+				
+			}
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				load_mysql_databases() ;
+			}
+		});
+		save_mysql_settings.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				save_mysql_settings();
+			}
+		});
+		//sql server配置面板相关事件
+		sqlserver_databases.addItemListener(new ItemListener() {
+			@Override
+			public void itemStateChanged(ItemEvent e) {
+				load_tables() ;
+			}
+		});
 		sqlserver_databases.addMouseListener(new MouseListener() {
 			@Override
 			public void mouseReleased(MouseEvent e) {
@@ -296,12 +372,103 @@ public class MainLayout extends BaseBorderLayout{
 		window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	}
 	/**
-	 * 加载sqlserver数据库列表
+	 * 开始迁移数据
 	 */
-	public void load_sqlserver_databases(){
-		if(sqlserver_databases.getItemCount()>1){
+	public void migrate(){
+		String sqlserver_url = tf_1.getText() ;
+		String sqlserver_port = tf_2.getText() ;
+		String sqlserver_username = tf_3.getText() ;
+		char[] sqlserver_password = pf_4.getPassword() ;
+		String sqlserver_database = "";
+		if(null!=sqlserver_databases.getSelectedItem()){
+			sqlserver_database = sqlserver_databases.getSelectedItem().toString() ;
+		}
+		String sqlserver_table = "" ;
+		if(null!=sqlserver_tables.getSelectedItem()){
+			sqlserver_table = sqlserver_tables.getSelectedItem().toString() ;
+		}
+		//验证
+		if(Global.isEmpty(sqlserver_url)){
+			JOptionPane.showMessageDialog(this, "请填写服务器地址","提示信息", JOptionPane.OK_OPTION);
+			tf_1.requestFocus();
 			return ;
 		}
+		if(Global.isEmpty(sqlserver_port)){
+			JOptionPane.showMessageDialog(this, "端口地址必须填写","提示信息", JOptionPane.OK_OPTION);
+			tf_2.requestFocus();
+			return ;
+		}
+		if(Global.isEmpty(sqlserver_username)){
+			JOptionPane.showMessageDialog(this, "登录名地址必须填写","提示信息", JOptionPane.OK_OPTION);
+			tf_3.requestFocus();
+			return ;
+		}
+		if(null==sqlserver_password||sqlserver_password.length==0){
+			JOptionPane.showMessageDialog(this, "密码必须填写","提示信息", JOptionPane.OK_OPTION);
+			pf_4.requestFocus();
+			return ;
+		}
+		if(Global.isEmpty(sqlserver_database)||"请选择".equals(sqlserver_database)){
+			JOptionPane.showMessageDialog(this, "请选择数据库","提示信息", JOptionPane.OK_OPTION);
+			return ;
+		}
+		if(Global.isEmpty(sqlserver_table)||"请选择".equals(sqlserver_table)){
+			JOptionPane.showMessageDialog(this, "请选择表","提示信息", JOptionPane.OK_OPTION);
+			return ;
+		}
+		String sqlserver_password_str = new String(sqlserver_password) ;
+		String sqlserver_jdbc_url = "jdbc:jtds:sqlserver://"+sqlserver_url+":"+sqlserver_port+";DatabaseName="+sqlserver_database ;
+		
+		
+		String mysql_url = tf_mysql_1.getText() ;
+		String mysql_port = tf_mysql_2.getText() ;
+		String mysql_username = tf_mysql_3.getText() ;
+		char[] mysql_password = pf_mysql_4.getPassword() ;
+		String mysql_database = "";
+		if(null!=mysql_databases.getSelectedItem()){
+			mysql_database = mysql_databases.getSelectedItem().toString() ;
+		}
+		//验证
+		if(Global.isEmpty(mysql_url)){
+			JOptionPane.showMessageDialog(this, "请填写服务器地址","提示信息", JOptionPane.OK_OPTION);
+			tf_mysql_1.requestFocus();
+			return ;
+		}
+		if(Global.isEmpty(mysql_port)){
+			JOptionPane.showMessageDialog(this, "端口地址必须填写","提示信息", JOptionPane.OK_OPTION);
+			tf_mysql_2.requestFocus();
+			return ;
+		}
+		if(Global.isEmpty(mysql_username)){
+			JOptionPane.showMessageDialog(this, "登录名地址必须填写","提示信息", JOptionPane.OK_OPTION);
+			tf_mysql_3.requestFocus();
+			return ;
+		}
+		if(null==mysql_password||mysql_password.length==0){
+			JOptionPane.showMessageDialog(this, "密码必须填写","提示信息", JOptionPane.OK_OPTION);
+			pf_mysql_4.requestFocus();
+			return ;
+		}
+		if(Global.isEmpty(mysql_database)||"请选择".equals(mysql_database)){
+			JOptionPane.showMessageDialog(this, "请选择数据库","提示信息", JOptionPane.OK_OPTION);
+			return ;
+		}
+		String mysql_password_str = new String(mysql_password) ;
+		String mysql_jdbc_url = "jdbc:mysql://"+mysql_url+":"+mysql_port+"/"+mysql_database+"?useUnicode=true&characterEncoding=UTF-8" ;
+		
+		//打开列选择页面
+		MigrateLayout migrate= new MigrateLayout(sqlserver_jdbc_url, "net.sourceforge.jtds.jdbc.Driver", sqlserver_username, 
+				sqlserver_password_str, sqlserver_database, sqlserver_table,
+				mysql_jdbc_url, "com.mysql.jdbc.Driver", mysql_username, mysql_password_str, mysql_database) ;
+		migrate.setVisible(true);
+//		migrate.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+	}
+	/**
+	 * 加载选中数据库下的所有表
+	 */
+	public void load_tables(){
+		sqlserver_tables.removeAllItems();
+		sqlserver_tables.addItem("请选择");
 		String url = tf_1.getText() ;
 		String port = tf_2.getText() ;
 		String username = tf_3.getText() ;
@@ -311,11 +478,47 @@ public class MainLayout extends BaseBorderLayout{
 		if(null!=sqlserver_databases.getSelectedItem()){
 			database = sqlserver_databases.getSelectedItem().toString() ;
 		}
-		 
-		String table = "" ;
-		if(null!=sqlserver_tables.getSelectedItem()){
-			table = sqlserver_tables.getSelectedItem().toString() ;
+		if(Global.isEmpty(database)||"请选择".equals(database)){
+			return;
 		}
+		String jdbc_url = "jdbc:jtds:sqlserver://"+url+":"+port+";DatabaseName="+database ;
+		DbManager db = new DbManager() ;
+		db.URL = jdbc_url ;
+		db.DRIVER = "net.sourceforge.jtds.jdbc.Driver" ;
+		db.USERNAME = username ;
+		db.PASSWORD = password_str ;
+		try {
+			Connection con = db.getConnect() ;
+			String tables_sql = "SELECT name FROM SysObjects Where XType='U' ORDER BY Name" ;
+			Statement stmt = con.createStatement() ;
+			ResultSet rs = stmt.executeQuery(tables_sql) ;
+			while(rs.next()){
+				sqlserver_tables.addItem(rs.getString(1));
+			}
+			db.close(con, stmt, rs);
+		} catch (Exception e) {
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(this, e.getMessage(),"连接失败", JOptionPane.OK_OPTION) ;
+		}
+	}
+	/**
+	 * 加载sqlserver数据库列表
+	 */
+	public void load_sqlserver_databases(){
+		String database = "";
+		if(null!=sqlserver_databases.getSelectedItem()){
+			database = sqlserver_databases.getSelectedItem().toString() ;
+		}
+		
+		sqlserver_databases.removeAllItems();
+		sqlserver_databases.addItem("请选择");
+		
+		String url = tf_1.getText() ;
+		String port = tf_2.getText() ;
+		String username = tf_3.getText() ;
+		char[] password = pf_4.getPassword() ;
+		String password_str = new String(password) ;
+		
 		String jdbc_url = "jdbc:jtds:sqlserver://"+url+":"+port ;
 		DbManager db = new DbManager() ;
 		db.URL = jdbc_url ;
@@ -329,23 +532,86 @@ public class MainLayout extends BaseBorderLayout{
 			ResultSet rs = stmt.executeQuery(databases_sql) ;
 			while(rs.next()){
 				sqlserver_databases.addItem(rs.getString(1));
-				System.out.println(rs.getString(1));
+			}
+			if(Global.isNotEmpty(database)){
+				sqlserver_databases.setSelectedItem(database);
 			}
 			db.close(con, stmt, rs);
 		} catch (Exception e) {
 			e.printStackTrace();
-			JOptionPane.showMessageDialog(this, e.getMessage(),"连接失败", JOptionPane.OK_OPTION) ;
+		}
+	}
+	/**
+	 * 加载mysql数据库列表
+	 */
+	public void load_mysql_databases(){
+		String database = "";
+		if(null!=mysql_databases.getSelectedItem()){
+			database = mysql_databases.getSelectedItem().toString() ;
+		}
+		
+		mysql_databases.removeAllItems();
+		mysql_databases.addItem("请选择");
+		
+		String url = tf_mysql_1.getText() ;
+		String port = tf_mysql_2.getText() ;
+		String username = tf_mysql_3.getText() ;
+		char[] password = pf_mysql_4.getPassword() ;
+		String password_str = new String(password) ;
+		
+		String jdbc_url = "jdbc:mysql://"+url+":"+port ;
+		DbManager db = new DbManager() ;
+		db.URL = jdbc_url ;
+		db.DRIVER = "com.mysql.jdbc.Driver" ;
+		db.USERNAME = username ;
+		db.PASSWORD = password_str ;
+		try {
+			Connection con = db.getConnect() ;
+			String databases_sql = "SHOW DATABASES" ;
+			Statement stmt = con.createStatement() ;
+			ResultSet rs = stmt.executeQuery(databases_sql) ;
+			while(rs.next()){
+				mysql_databases.addItem(rs.getString(1));
+			}
+			if(Global.isNotEmpty(database)){
+				mysql_databases.setSelectedItem(database);
+			}
+			db.close(con, stmt, rs);
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 	/**
 	 * 测试SQLSERVER链接
 	 */
 	private void test_sqlserver(){
+		sqlserver_databases.removeAllItems();
+		sqlserver_databases.addItem("请选择");
 		String url = tf_1.getText() ;
 		String port = tf_2.getText() ;
 		String username = tf_3.getText() ;
 		char[] password = pf_4.getPassword() ;
 		String password_str = new String(password) ;
+		if(Global.isEmpty(url)){
+			JOptionPane.showMessageDialog(this, "请填写服务器地址","提示信息", JOptionPane.OK_OPTION);
+			tf_1.requestFocus();
+			return ;
+		}
+		if(Global.isEmpty(port)){
+			JOptionPane.showMessageDialog(this, "端口地址必须填写","提示信息", JOptionPane.OK_OPTION);
+			tf_2.requestFocus();
+			return ;
+		}
+		if(Global.isEmpty(username)){
+			JOptionPane.showMessageDialog(this, "登录名地址必须填写","提示信息", JOptionPane.OK_OPTION);
+			tf_3.requestFocus();
+			return ;
+		}
+		if(null==password||password.length==0){
+			JOptionPane.showMessageDialog(this, "密码必须填写","提示信息", JOptionPane.OK_OPTION);
+			pf_4.requestFocus();
+			return ;
+		}
 		String database = "";
 		if(null!=sqlserver_databases.getSelectedItem()){
 			database = sqlserver_databases.getSelectedItem().toString() ;
@@ -383,6 +649,75 @@ public class MainLayout extends BaseBorderLayout{
 							Global.Encrypt(password_str,Global.KEY)+","+
 							database+","+
 							table);
+		} catch (Exception e) {
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(this, e.getMessage(),"连接失败", JOptionPane.OK_OPTION) ;
+		}
+	}
+	/**
+	 * 测试mysql链接
+	 */
+	private void test_mysql(){
+		mysql_databases.removeAllItems();
+		mysql_databases.addItem("请选择");
+		String url = tf_mysql_1.getText() ;
+		String port = tf_mysql_2.getText() ;
+		String username = tf_mysql_3.getText() ;
+		char[] password = pf_mysql_4.getPassword() ;
+		String password_str = new String(password) ;
+		if(Global.isEmpty(url)){
+			JOptionPane.showMessageDialog(this, "请填写服务器地址","提示信息", JOptionPane.OK_OPTION);
+			tf_mysql_1.requestFocus();
+			return ;
+		}
+		if(Global.isEmpty(port)){
+			JOptionPane.showMessageDialog(this, "端口地址必须填写","提示信息", JOptionPane.OK_OPTION);
+			tf_mysql_2.requestFocus();
+			return ;
+		}
+		if(Global.isEmpty(username)){
+			JOptionPane.showMessageDialog(this, "登录名地址必须填写","提示信息", JOptionPane.OK_OPTION);
+			tf_mysql_3.requestFocus();
+			return ;
+		}
+		if(null==password||password.length==0){
+			JOptionPane.showMessageDialog(this, "密码必须填写","提示信息", JOptionPane.OK_OPTION);
+			pf_mysql_4.requestFocus();
+			return ;
+		}
+		String database = "";
+		if(null!=mysql_databases.getSelectedItem()){
+			database = mysql_databases.getSelectedItem().toString() ;
+		}
+		
+		String jdbc_url = "jdbc:mysql://"+url+":"+port ;
+		DbManager db = new DbManager() ;
+		db.URL = jdbc_url ;
+		db.DRIVER = "com.mysql.jdbc.Driver" ;
+		db.USERNAME = username ;
+		db.PASSWORD = password_str ;
+		try {
+			Connection con = db.getConnect() ;
+			if(null==con){
+				JOptionPane.showMessageDialog(this, "未知原因","连接失败", JOptionPane.OK_OPTION) ;
+				return;
+			}
+			String databases_sql = "SHOW DATABASES" ;
+			Statement stmt = con.createStatement() ;
+			ResultSet rs = stmt.executeQuery(databases_sql) ;
+			while(rs.next()){
+				mysql_databases.addItem(rs.getString(1));
+			}
+			db.close(rs);
+			db.close(stmt);
+			db.close(con);
+			JOptionPane.showMessageDialog(this, "连接成功","提示信息", JOptionPane.PLAIN_MESSAGE) ;
+			FileUtil.rewrite(new File("MySQL.config"), 
+					Global.Encrypt(url,Global.KEY)+","+
+							Global.Encrypt(port,Global.KEY)+","+
+							Global.Encrypt(username,Global.KEY)+","+
+							Global.Encrypt(password_str,Global.KEY)+","+
+							database);
 		} catch (Exception e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(this, e.getMessage(),"连接失败", JOptionPane.OK_OPTION) ;
@@ -454,6 +789,55 @@ public class MainLayout extends BaseBorderLayout{
 		return;
 	}
 	/**
+	 * 保存mysql配置
+	 */
+	private void save_mysql_settings(){
+		String url = tf_mysql_1.getText() ;
+		String port = tf_mysql_2.getText() ;
+		String username = tf_mysql_3.getText() ;
+		char[] password = pf_mysql_4.getPassword() ;
+		
+		if(Global.isEmpty(url)){
+			JOptionPane.showMessageDialog(this, "请填写服务器地址","提示信息", JOptionPane.OK_OPTION);
+			tf_mysql_1.requestFocus();
+			return ;
+		}
+		if(Global.isEmpty(port)){
+			JOptionPane.showMessageDialog(this, "端口地址必须填写","提示信息", JOptionPane.OK_OPTION);
+			tf_mysql_2.requestFocus();
+			return ;
+		}
+		if(Global.isEmpty(username)){
+			JOptionPane.showMessageDialog(this, "登录名地址必须填写","提示信息", JOptionPane.OK_OPTION);
+			tf_mysql_3.requestFocus();
+			return ;
+		}
+		if(null==password||password.length==0){
+			JOptionPane.showMessageDialog(this, "密码必须填写","提示信息", JOptionPane.OK_OPTION);
+			pf_mysql_4.requestFocus();
+			return ;
+		}
+		String password_str = new String(password) ;
+		String database = "";
+		if(null!=mysql_databases.getSelectedItem()){
+			database = mysql_databases.getSelectedItem().toString() ;
+		}
+		try {
+			FileUtil.rewrite(new File("MySQL.config"), 
+					Global.Encrypt(url,Global.KEY)+","+
+							Global.Encrypt(port,Global.KEY)+","+
+							Global.Encrypt(username,Global.KEY)+","+
+							Global.Encrypt(password_str,Global.KEY)+","+
+							database);
+		} catch (Exception e) {
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(this, "保存失败,config文件异常","提示信息", JOptionPane.OK_OPTION) ;
+			return;
+		}
+		JOptionPane.showMessageDialog(this, "保存成功","提示信息", JOptionPane.PLAIN_MESSAGE) ;
+		return;
+	}
+	/**
 	 * 加载已保存的配置
 	 * private BaseJTextfield tf_1 ;
 	private BaseJTextfield tf_2 ;
@@ -471,17 +855,45 @@ public class MainLayout extends BaseBorderLayout{
 			public void run() {
 				try {
 					String[] configs = Global.commonGetProperties("SQLServer.config") ;
-					tf_1.setText(Global.Decrypt(configs[0], Global.KEY));
-					tf_2.setText(Global.Decrypt(configs[1], Global.KEY));
-					tf_3.setText(Global.Decrypt(configs[2], Global.KEY));
-					pf_4.setText(Global.Decrypt(configs[3], Global.KEY));
-					if(configs.length==5){
-						sqlserver_databases.setSelectedItem(configs[4]);
-					}else if(configs.length==6){
-						sqlserver_tables.setSelectedItem(configs[5]);
+					if(null!=configs){
+						tf_1.setText(Global.Decrypt(configs[0], Global.KEY));
+						tf_2.setText(Global.Decrypt(configs[1], Global.KEY));
+						tf_3.setText(Global.Decrypt(configs[2], Global.KEY));
+						pf_4.setText(Global.Decrypt(configs[3], Global.KEY));
+						if(configs.length>=5){
+							load_sqlserver_databases();
+							sqlserver_databases.setSelectedItem(configs[4]);
+						}
+						if(configs.length==6){
+							sqlserver_tables.setSelectedItem(configs[5]);
+						}
 					}
 				} catch (Exception e) {
-					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}).start();
+		
+	}
+	private void load_msyql_settings() {
+		new Thread(new Runnable() {
+			
+			@Override
+			public void run() {
+				try {
+					String[] configs = Global.commonGetProperties("MySQL.config") ;
+					if(null!=configs){
+						tf_mysql_1.setText(Global.Decrypt(configs[0], Global.KEY));
+						tf_mysql_2.setText(Global.Decrypt(configs[1], Global.KEY));
+						tf_mysql_3.setText(Global.Decrypt(configs[2], Global.KEY));
+						pf_mysql_4.setText(Global.Decrypt(configs[3], Global.KEY));
+						if(configs.length>=5){
+//							load_mysql_databases();
+							mysql_databases.addItem(configs[4]);
+							mysql_databases.setSelectedItem(configs[4]);
+						}
+					}
+				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			}

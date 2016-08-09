@@ -12,10 +12,19 @@ import java.sql.Statement;
 
 public class DbManager {
 	public  String URL = "" ;
-	//com.mysql.jdbc.Driver
-	public  String DRIVER = "com.microsoft.sqlserver.jdbc.SQLServerDriver" ;
-	public  String USERNAME = "sa" ;
+	public  String DRIVER = "" ;
+	public  String USERNAME = "" ;
 	public  String PASSWORD = "" ;
+	
+	public DbManager(){
+		
+	}
+	public DbManager(String url,String driver,String username,String password){
+		URL = url ;
+		DRIVER = driver ;
+		USERNAME = username ;
+		PASSWORD = password ;
+	}
 	/**
 	 * 获取连接
 	 * 

@@ -31,6 +31,9 @@ public class FileUtil {
 	public static List<String> readList(File file) {
 		BufferedReader br = null;
 		List<String> data = new ArrayList<String>();
+		if(null==file){
+			return data ;
+		}
 		try {
 			br = new BufferedReader(new FileReader(file));
 			for (String str = null; (str = br.readLine()) != null;) {
