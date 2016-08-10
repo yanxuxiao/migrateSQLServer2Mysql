@@ -171,6 +171,11 @@ public class MigrateLayout extends BaseBorderLayout{
 	 * 正式迁移数据了
 	 */
 	private void next_step(){
+		//优化方案
+		// 统计总待转移数据数量  分成八份  起八个线程完成
+		//另外 加入进度条
+		//最近没时间搞,果断时间得空再弄~
+		
 		mysql_ColTypes = new ArrayList<String>() ;
 		try {
 			DbManager mysql_db = new DbManager(mysql_url, mysql_driver, mysql_username, mysql_password) ;
