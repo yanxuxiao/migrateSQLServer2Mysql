@@ -1,4 +1,4 @@
-package com.kingshine.layout;
+package com.kingshine.layout.base;
 
 import java.awt.BorderLayout;
 import java.awt.Font;

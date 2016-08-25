@@ -12,6 +12,8 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -25,6 +27,12 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
+import com.kingshine.layout.base.BaseBorderLayout;
+import com.kingshine.layout.base.BaseButton;
+import com.kingshine.layout.base.BaseJComboBox;
+import com.kingshine.layout.base.BaseJPasswordField;
+import com.kingshine.layout.base.BaseJTextfield;
+import com.kingshine.layout.base.CommonButton;
 import com.kingshine.util.DbManager;
 import com.kingshine.util.FileUtil;
 import com.kingshine.util.Global;
@@ -53,6 +61,7 @@ public class MainLayout extends BaseBorderLayout{
 	
 	private JPanel p ;
 	private JLabel jl ;
+	private CommonButton cb1 ;
 	
 	public MainLayout(){
 		this.setTitle("数据迁移工具(SQL Server to MySQL)");
@@ -227,7 +236,7 @@ public class MainLayout extends BaseBorderLayout{
 		JPanel pbottom=new JPanel();
 		pbottom.setLayout(new FlowLayout(FlowLayout.CENTER,5,5));
 		
-		CommonButton cb1 = new CommonButton("开始迁移") ;
+		cb1 = new CommonButton("开始迁移") ;
 		
 		pbottom.add(cb1) ;
 		
@@ -375,6 +384,8 @@ public class MainLayout extends BaseBorderLayout{
 	 * 开始迁移数据
 	 */
 	public void migrate(){
+		//禁用按钮
+		cb1.setEnabled(false);
 		String sqlserver_url = tf_1.getText() ;
 		String sqlserver_port = tf_2.getText() ;
 		String sqlserver_username = tf_3.getText() ;
@@ -461,7 +472,15 @@ public class MainLayout extends BaseBorderLayout{
 				sqlserver_password_str, sqlserver_database, sqlserver_table,
 				mysql_jdbc_url, "com.mysql.jdbc.Driver", mysql_username, mysql_password_str, mysql_database) ;
 		migrate.setVisible(true);
-//		migrate.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		migrate.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		migrate.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosed(WindowEvent e) {
+				super.windowClosed(e);
+				cb1.setEnabled(true);
+			}
+			
+		});
 	}
 	/**
 	 * 加载选中数据库下的所有表

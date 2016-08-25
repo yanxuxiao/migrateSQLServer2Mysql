@@ -15,6 +15,7 @@ public class FileUtil {
 		try {
 			bw = new BufferedWriter(new FileWriter(file));
 			bw.write(data);
+			bw.flush();
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
@@ -27,7 +28,37 @@ public class FileUtil {
 			}
 		}
 	}
-
+	public static String write(String fileName,String data_str){
+		BufferedWriter bw = null;
+		String real_path = "" ;
+		try {
+			String file_with_dir = "export_data" ;
+			File file = new File(file_with_dir);
+			if(!file.exists()){
+				file.mkdirs() ;
+			}
+			file_with_dir += File.separator+fileName ;
+			file = new File(file_with_dir);
+			if(!file.exists()){
+				file.createNewFile() ;
+			}
+			real_path = file.getAbsolutePath() ;
+			bw = new BufferedWriter(new FileWriter(file));
+			bw.append("\r\n"+data_str);
+			bw.flush();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			if (bw != null) {
+				try {
+					bw.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return real_path;//返回文件物理路径
+	}
 	public static List<String> readList(File file) {
 		BufferedReader br = null;
 		List<String> data = new ArrayList<String>();

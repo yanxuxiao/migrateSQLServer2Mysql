@@ -4,6 +4,8 @@ import java.awt.FlowLayout;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -12,21 +14,27 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Date;
 import java.util.List;
 import java.util.Vector;
 
 import javax.swing.BorderFactory;
+import javax.swing.JCheckBox;
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JTextArea;
 
+import com.kingshine.layout.base.BaseBorderLayout;
+import com.kingshine.layout.base.CommonButton;
 import com.kingshine.layout.table.CheckHeaderCellRenderer;
 import com.kingshine.layout.table.CheckTableModle;
 import com.kingshine.util.DbManager;
+import com.kingshine.util.FileUtil;
 import com.kingshine.util.Global;
-import com.mysql.jdbc.StringUtils;
 
 public class MigrateLayout extends BaseBorderLayout{
 
@@ -54,6 +62,12 @@ public class MigrateLayout extends BaseBorderLayout{
 	private String[] colTypes ;
 	private int[] colSizes ;
 	private String pk_col ;
+	
+	private JCheckBox jcb ;
+	private CommonButton cb1 ;
+	private CommonButton cb2 ;
+	private String real_path ;
+	private int total_record ;
 	
 	private List<String> mysql_ColTypes = new ArrayList<String>() ;
 	
@@ -152,9 +166,13 @@ public class MigrateLayout extends BaseBorderLayout{
 		JPanel pbottom=new JPanel();
 		pbottom.setLayout(new FlowLayout(FlowLayout.CENTER,5,5));
 		
-		CommonButton cb1 = new CommonButton("下一步") ;
+		cb1 = new CommonButton("开始") ;
+		cb2 = new CommonButton("导出SQL文件") ;
+		jcb = new JCheckBox("去重复");
 		
+		pbottom.add(jcb);
 		pbottom.add(cb1) ;
+		pbottom.add(cb2) ;
 		
 		this.getContentPane().add("South", pbottom);
 		
@@ -163,24 +181,45 @@ public class MigrateLayout extends BaseBorderLayout{
 			
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				next_step();
+				new Thread(new Runnable() {
+					@Override
+					public void run() {
+						next_step(false);//直接数据库
+					}
+				}).start(); ;
+			}
+		});
+		cb2.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				new Thread(new Runnable() {
+					@Override
+					public void run() {
+						next_step(true);//导出到文件
+					}
+				}).start(); ;
 			}
 		});
 	}
 	/**
 	 * 正式迁移数据了
 	 */
-	private void next_step(){
+	private void next_step(boolean export_as_sql){
+		if(export_as_sql){
+			cb2.setEnabled(false);
+		}else{
+			cb1.setEnabled(false);
+		}
 		//优化方案
 		// 统计总待转移数据数量  分成八份  起八个线程完成
 		//另外 加入进度条
 		//最近没时间搞,果断时间得空再弄~
-		
 		mysql_ColTypes = new ArrayList<String>() ;
 		try {
 			DbManager mysql_db = new DbManager(mysql_url, mysql_driver, mysql_username, mysql_password) ;
 			Connection mysql_conn = mysql_db.getConnect() ;
-			String if_table_exists_sql = "SELECT COUNT(1) FROM information_schema.TABLES WHERE table_name='"+sqlserver_table.toLowerCase()+"'" ;
+			String if_table_exists_sql = "SELECT COUNT(1) FROM information_schema.TABLES WHERE table_name='"+sqlserver_table.toLowerCase()+"' AND table_schema='"+mysql_database+"' " ;
 			Statement mysql_stmt = mysql_conn.createStatement() ;
 			ResultSet mysql_rs = mysql_stmt.executeQuery(if_table_exists_sql) ;
 			String table_name = sqlserver_table.toLowerCase() ;
@@ -193,6 +232,9 @@ public class MigrateLayout extends BaseBorderLayout{
 			mysql_db.close(mysql_rs);
 			String create_table = "CREATE TABLE `"+table_name+"`(" ;
 			String select_from_sqlserver = " SELECT " ;//sql server 待查询列 预处理字符串
+			if(null!=jcb&&jcb.isSelected()){
+				select_from_sqlserver += " DISTINCT " ;
+			}
 			String insert_sql_4_msyql = " insert into `"+table_name+"`(" ;//mysql 插入语句 预处理
 			boolean if_pk_contained = false ;
 			boolean there_at_least_one_col = false ;
@@ -227,13 +269,33 @@ public class MigrateLayout extends BaseBorderLayout{
 			}
 			create_table += ")" ;
 			
-			mysql_stmt.executeUpdate(create_table) ;
-//			System.out.println(create_table);
+			StringBuilder sb = new StringBuilder();
+			if(!export_as_sql){
+				mysql_stmt.executeUpdate(create_table) ;
+			}else{
+				sb.append(create_table+";\n") ;
+			}
+			
 //			System.out.println(select_from_sqlserver);
 			
 			DbManager sqlserver_db = new DbManager(sqlserver_url, sqlserver_driver, sqlserver_username, sqlserver_password) ;
 			Connection sqlserver_conn = sqlserver_db.getConnect() ;
 			Statement sqlserver_stmt = sqlserver_conn.createStatement() ;
+			//统计总记录数量
+//			String select_from_sqlserver_count = "SELECT COUNT(1) FROM ("+select_from_sqlserver+") c" ;
+//			ResultSet sqlserver_rs_count = sqlserver_stmt.executeQuery(select_from_sqlserver_count) ;
+//			total_record = 0 ;
+//			JProgressBar progress = null ;
+			ProcessBar pb = new ProcessBar("处理中...");
+			Thread t = new Thread(pb);
+	        t.start();
+//			if(sqlserver_rs_count.next()){
+//				total_record = sqlserver_rs_count.getInt(1) ;
+//				pb = new ProcessBar("处理进度...");
+//			}
+//			sqlserver_db.close(sqlserver_rs_count);
+			
+			//查询符合要求的记录并插入MySQL数据库
 			ResultSet sqlserver_rs = sqlserver_stmt.executeQuery(select_from_sqlserver) ;
 			String insert_each = "" ;
 			String colType = "" ;
@@ -241,6 +303,7 @@ public class MigrateLayout extends BaseBorderLayout{
 			int interval_count = 0 ;
 			while(sqlserver_rs.next()){
 				interval_count++ ;
+				
 				insert_each = insert_sql_4_msyql ;
 				for(int i=0;i<mysql_ColTypes.size();i++){
 					colType = mysql_ColTypes.get(i) ;
@@ -248,18 +311,68 @@ public class MigrateLayout extends BaseBorderLayout{
 				}
 				insert_each = insert_each.substring(0, insert_each.length()-1) ;
 				insert_each += ")" ;
-				mysql_stmt.addBatch(insert_each);
-				if(interval_count%1000==0){
-					mysql_stmt.executeBatch() ;
+				
+				if(!export_as_sql){//直接插入数据库
+					mysql_stmt.addBatch(insert_each);
+					if(interval_count%500==0){
+						mysql_stmt.executeBatch() ;
+					}
+				}else{//导入SQL文件
+					sb.append(insert_each+";\n") ;
 				}
+				
+				//处理进度条
+//                progress.setValue(progress.getValue() + (interval_count/total_record)); 
+//                progress.setString(progress.getValue() + "%");
 			}
-			if(interval_count%1000!=0){
+			if(!export_as_sql&&interval_count%500!=0){//直接插入数据库 扫尾(处理取模余数batch sql)
 				mysql_stmt.executeBatch() ;
 			}
+			if(export_as_sql){//导出到文件
+				writeSQLToFile(sb.toString(),0);
+			}
+			//设置进度条可关闭
+			pb.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+			pb.dispose();//关闭进度条
+			
 			sqlserver_db.close(sqlserver_conn, sqlserver_stmt, sqlserver_rs);
 			mysql_db.close(mysql_conn, mysql_stmt);
 		} catch (Exception e) {
 			e.printStackTrace();
+		} finally {
+			if(export_as_sql){
+				JTextArea ta = new JTextArea();
+				ta.setText("已导出DDL语句1条,DML语句"+total_record+"条\n保存在:"+real_path);
+				ta.setEditable(false);
+				JOptionPane.showMessageDialog(this, ta,"导出完成", JOptionPane.PLAIN_MESSAGE) ;
+			}else{
+				JOptionPane.showMessageDialog(this, "数据迁移完成,共迁移数据"+total_record+"条~","迁移完成", JOptionPane.PLAIN_MESSAGE) ;
+			}
+		}
+	}
+	/**
+	 * 写入文件
+	 * @return
+	 */
+	private void writeSQLToFile(String data,int index){
+		String fileName = sqlserver_table+"_"+new SimpleDateFormat("yyyyMMdd").format(new Date())+"_"+index+".sql" ;
+		String file_with_dir = "export_data" ;
+		File file = new File(file_with_dir);
+		if(!file.exists()){
+			file.mkdirs() ;
+		}
+		file_with_dir += File.separator+fileName ;
+		file = new File(file_with_dir);
+		if(!file.exists()){
+			try {
+				file.createNewFile() ;
+				real_path = file.getAbsolutePath() ;
+				FileUtil.rewrite(file, data);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}else{
+			writeSQLToFile(data,(index+1));
 		}
 	}
 	/**
@@ -273,41 +386,46 @@ public class MigrateLayout extends BaseBorderLayout{
 	 * @throws Exception
 	 */
 	private String sqlserverValue2MysqlValue(String insert_each,String colType,ResultSet sqlserver_rs,int i,SimpleDateFormat sdf ) throws Exception{
-		if (colType.equalsIgnoreCase("int")
-				||colType.equalsIgnoreCase("tinyint")
-				||colType.equalsIgnoreCase("smallint")
-				||colType.equalsIgnoreCase("integer")
-				||colType.equalsIgnoreCase("bit")
-				||colType.equalsIgnoreCase("identity")
-				||colType.equalsIgnoreCase("bigint")
-				) {
-			insert_each += sqlserver_rs.getInt(i+1)+"," ;  
-		}else if (colType.equalsIgnoreCase("decimal")
-				||colType.equalsIgnoreCase("money")
-				||colType.equalsIgnoreCase("smallmoney")
-				||colType.equalsIgnoreCase("numeric")
-				||colType.equalsIgnoreCase("float")
-				||colType.equalsIgnoreCase("real")
-				) {
-			insert_each += sqlserver_rs.getDouble(i+1)+"," ;  
-		}else if (colType.equalsIgnoreCase("varchar")
-				|| colType.equalsIgnoreCase("char")
-				|| colType.equalsIgnoreCase("nchar")
-				|| colType.equalsIgnoreCase("nvarchar")
-				|| colType.equalsIgnoreCase("uniqueidentifier")
-				|| colType.equalsIgnoreCase("sql_variant")
-				||colType.equalsIgnoreCase("text")
-				||colType.equalsIgnoreCase("ntext")
-				) {
-			insert_each += "'"+sqlserver_rs.getString(i+1)+"'," ;  
-		}else if(colType.equalsIgnoreCase("smalldatetime")
-				||colType.equalsIgnoreCase("datetime")
-				||colType.equalsIgnoreCase("timestamp")){
-			if(null==sqlserver_rs.getDate(i+1)){
-				insert_each += "''," ; 
-			}else{
-				insert_each += "'"+sdf.format(sqlserver_rs.getDate(i+1))+"'," ; 
+		try {
+			if (colType.equalsIgnoreCase("int")
+					||colType.equalsIgnoreCase("tinyint")
+					||colType.equalsIgnoreCase("smallint")
+					||colType.equalsIgnoreCase("integer")
+					||colType.equalsIgnoreCase("bit")
+					||colType.equalsIgnoreCase("identity")
+					||colType.equalsIgnoreCase("bigint")
+					) {
+				insert_each += sqlserver_rs.getInt(i+1)+"," ;  
+			}else if (colType.equalsIgnoreCase("decimal")
+					||colType.equalsIgnoreCase("money")
+					||colType.equalsIgnoreCase("smallmoney")
+					||colType.equalsIgnoreCase("numeric")
+					||colType.equalsIgnoreCase("float")
+					||colType.equalsIgnoreCase("real")
+					) {
+				insert_each += sqlserver_rs.getDouble(i+1)+"," ;  
+			}else if (colType.equalsIgnoreCase("varchar")
+					|| colType.equalsIgnoreCase("char")
+					|| colType.equalsIgnoreCase("nchar")
+					|| colType.equalsIgnoreCase("nvarchar")
+					|| colType.equalsIgnoreCase("uniqueidentifier")
+					|| colType.equalsIgnoreCase("sql_variant")
+					||colType.equalsIgnoreCase("text")
+					||colType.equalsIgnoreCase("ntext")
+					) {
+				insert_each += "'"+sqlserver_rs.getString(i+1)+"'," ;  
+			}else if(colType.equalsIgnoreCase("smalldatetime")
+					||colType.equalsIgnoreCase("datetime")
+					||colType.equalsIgnoreCase("timestamp")){
+				if(null==sqlserver_rs.getDate(i+1)){
+					insert_each += "''," ; 
+				}else{
+					insert_each += "'"+sdf.format(sqlserver_rs.getDate(i+1))+"'," ; 
+				}
 			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+			insert_each += "'"+sqlserver_rs.getString(i+1)+"'," ;  
 		}
 		return insert_each ;
 	}
