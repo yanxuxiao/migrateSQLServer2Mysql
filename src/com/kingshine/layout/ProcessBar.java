@@ -7,15 +7,14 @@ import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JProgressBar;
 
-public class ProcessBar extends JDialog implements Runnable {
-    private JProgressBar progress; // 进度条
-
+public class ProcessBar extends JDialog {
     
+	private JProgressBar progress; // 进度条
     public ProcessBar(String str) {
     	this.setTitle(str);
     	
         progress = new JProgressBar(1, 100); // 实例化进度条
-        progress.setStringPainted(false);      // 描绘文字
+        progress.setStringPainted(true);      // 描绘文字
         progress.setBackground(Color.PINK); // 设置背景色
         this.add(progress);
         
@@ -29,25 +28,30 @@ public class ProcessBar extends JDialog implements Runnable {
         this.setVisible(true);
     }
 
-    public void run() {
-        while(true) {
-            for(int i=0; i<100; i++) {
-                try {
-                    progress.setValue(progress.getValue() + 1); // 随着线程进行，增加进度条值
-//                    progress.setString(progress.getValue() + "%");
-                    Thread.sleep(50);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-            progress.setValue(0);
-//            progress.setString(0+"%");
-        }
-    }
     
-    public static void main(String[] args) {
-        ProcessBar pb = new ProcessBar("Test JProcessBar");
-        Thread t = new Thread(pb);
-        t.start();
+	public JProgressBar getProgress() {
+		return progress;
+	}
+
+	public void setProgress(JProgressBar progress) {
+		this.progress = progress;
+	}
+
+	public static void main(String[] args) {
+//        ProcessBar pb = new ProcessBar("Test JProcessBar");
+//        Thread t = new Thread(pb);
+//        t.start();
+//        ProcessVariable pv = new ProcessVariable() ;
+//        for(int i=1;i<=100;i++){
+//        	 pv.setIncrement(i);
+//        	 pv.setAdded(false);
+//             pb.setPv(pv);
+//             try {
+// 				Thread.sleep(200);
+// 			} catch (InterruptedException e) {
+// 				// TODO Auto-generated catch block
+// 				e.printStackTrace();
+// 			}
+//        }
     }
 }

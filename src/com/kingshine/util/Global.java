@@ -38,6 +38,12 @@ public class Global {
 			return false;
 		}
 	}
+	public static String trim(String text){
+		if(isNotEmpty(text)){
+			text = text.trim() ;
+		}
+		return text ;
+	}
 	/**
 	 * 3DES解密
 	 * 

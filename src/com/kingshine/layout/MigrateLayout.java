@@ -68,6 +68,7 @@ public class MigrateLayout extends BaseBorderLayout{
 	private CommonButton cb2 ;
 	private String real_path ;
 	private int total_record ;
+	private ProcessBar pb  ;
 	
 	private List<String> mysql_ColTypes = new ArrayList<String>() ;
 	
@@ -215,6 +216,7 @@ public class MigrateLayout extends BaseBorderLayout{
 		// 统计总待转移数据数量  分成八份  起八个线程完成
 		//另外 加入进度条
 		//最近没时间搞,果断时间得空再弄~
+		
 		mysql_ColTypes = new ArrayList<String>() ;
 		try {
 			DbManager mysql_db = new DbManager(mysql_url, mysql_driver, mysql_username, mysql_password) ;
@@ -240,9 +242,7 @@ public class MigrateLayout extends BaseBorderLayout{
 			boolean there_at_least_one_col = false ;
 			for(int i=0;i<size;i++){
 				if((Boolean)tableModel.getValueAt(i, 0)){//待迁移列
-					if(!mysql_ColTypes.contains(colTypes[i])){
-						mysql_ColTypes.add(colTypes[i]) ;
-					}
+					mysql_ColTypes.add(colTypes[i]) ;
 					there_at_least_one_col = true ;
 					create_table += sqlserverType2MysqlType(colnames[i],colTypes[i],colSizes[i])+" ," ;
 					select_from_sqlserver += orinColNames[i] + "," ;
@@ -282,27 +282,28 @@ public class MigrateLayout extends BaseBorderLayout{
 			Connection sqlserver_conn = sqlserver_db.getConnect() ;
 			Statement sqlserver_stmt = sqlserver_conn.createStatement() ;
 			//统计总记录数量
-//			String select_from_sqlserver_count = "SELECT COUNT(1) FROM ("+select_from_sqlserver+") c" ;
-//			ResultSet sqlserver_rs_count = sqlserver_stmt.executeQuery(select_from_sqlserver_count) ;
-//			total_record = 0 ;
-//			JProgressBar progress = null ;
-			ProcessBar pb = new ProcessBar("处理中...");
-			Thread t = new Thread(pb);
-	        t.start();
-//			if(sqlserver_rs_count.next()){
-//				total_record = sqlserver_rs_count.getInt(1) ;
-//				pb = new ProcessBar("处理进度...");
-//			}
-//			sqlserver_db.close(sqlserver_rs_count);
+			String select_from_sqlserver_count = "SELECT COUNT(1) FROM ("+select_from_sqlserver+") c" ;
+			ResultSet sqlserver_rs_count = sqlserver_stmt.executeQuery(select_from_sqlserver_count) ;
+			total_record = 0 ;
+			if(sqlserver_rs_count.next()){
+				total_record = sqlserver_rs_count.getInt(1) ;
+			}
+			sqlserver_db.close(sqlserver_rs_count);
 			
+			//实例化进度条
+			pb = new ProcessBar("处理中...");
+			pb.getProgress().setValue(1);
 			//查询符合要求的记录并插入MySQL数据库
 			ResultSet sqlserver_rs = sqlserver_stmt.executeQuery(select_from_sqlserver) ;
 			String insert_each = "" ;
 			String colType = "" ;
 			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss") ;
 			int interval_count = 0 ;
+			double interval_count_double = 0.0 ;
+			Double increment = 0.0 ;
 			while(sqlserver_rs.next()){
 				interval_count++ ;
+				interval_count_double++;
 				
 				insert_each = insert_sql_4_msyql ;
 				for(int i=0;i<mysql_ColTypes.size();i++){
@@ -322,8 +323,10 @@ public class MigrateLayout extends BaseBorderLayout{
 				}
 				
 				//处理进度条
-//                progress.setValue(progress.getValue() + (interval_count/total_record)); 
-//                progress.setString(progress.getValue() + "%");
+				increment = (interval_count_double/total_record)*100 ;
+				if(increment.intValue()>pb.getProgress().getValue()){
+					pb.getProgress().setValue(increment.intValue());
+				}
 			}
 			if(!export_as_sql&&interval_count%500!=0){//直接插入数据库 扫尾(处理取模余数batch sql)
 				mysql_stmt.executeBatch() ;
@@ -332,13 +335,15 @@ public class MigrateLayout extends BaseBorderLayout{
 				writeSQLToFile(sb.toString(),0);
 			}
 			//设置进度条可关闭
-			pb.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 			pb.dispose();//关闭进度条
 			
 			sqlserver_db.close(sqlserver_conn, sqlserver_stmt, sqlserver_rs);
 			mysql_db.close(mysql_conn, mysql_stmt);
 		} catch (Exception e) {
 			e.printStackTrace();
+			if(null!=pb){
+				pb.dispose();//关闭进度条
+			}
 		} finally {
 			if(export_as_sql){
 				JTextArea ta = new JTextArea();
@@ -413,7 +418,7 @@ public class MigrateLayout extends BaseBorderLayout{
 					||colType.equalsIgnoreCase("text")
 					||colType.equalsIgnoreCase("ntext")
 					) {
-				insert_each += "'"+sqlserver_rs.getString(i+1)+"'," ;  
+				insert_each += "'"+Global.trim(sqlserver_rs.getString(i+1))+"'," ;  
 			}else if(colType.equalsIgnoreCase("smalldatetime")
 					||colType.equalsIgnoreCase("datetime")
 					||colType.equalsIgnoreCase("timestamp")){
@@ -425,7 +430,7 @@ public class MigrateLayout extends BaseBorderLayout{
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
-			insert_each += "'"+sqlserver_rs.getString(i+1)+"'," ;  
+			insert_each += "'"+Global.trim(sqlserver_rs.getString(i+1))+"'," ;  
 		}
 		return insert_each ;
 	}
